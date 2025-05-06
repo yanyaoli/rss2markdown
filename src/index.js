@@ -99,7 +99,8 @@ async function fetchData() {
     latestData = {
       items: formattedData,
       errors: result.errors,
-      fetchTime: new Date().toLocaleString('zh-CN')
+      fetchTime: new Date().toLocaleString('zh-CN'),
+      timeZone: 'Asia/Shanghai'
     };
     
     // 如果不是 Vercel 环境，通知所有连接的客户端数据已更新
