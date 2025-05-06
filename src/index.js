@@ -45,8 +45,9 @@ if (!isVercel) {
     
     // 更新实时数据
     latestData.items = formattedItems;
-    latestData.fetchTime = new Date().toLocaleString('zh-CN');
-    
+    latestData.fetchTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+;
+
     // 通知所有连接的客户端有新的源数据
     io.emit('sourceUpdated', {
       items: formattedItems,
@@ -77,7 +78,7 @@ app.set('views', path.join(__dirname, '../views'));
 let latestData = {
   items: [],
   errors: [],
-  fetchTime: new Date().toLocaleString('zh-CN')
+  fetchTime: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
 };
 
 // 定义获取数据的函数
@@ -99,7 +100,7 @@ async function fetchData() {
     latestData = {
       items: formattedData,
       errors: result.errors,
-      fetchTime: new Date().toLocaleString('zh-CN'),
+      fetchTime: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
       timeZone: 'Asia/Shanghai'
     };
     

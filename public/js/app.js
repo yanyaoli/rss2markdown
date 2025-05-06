@@ -92,6 +92,7 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // 根据日期筛选文章
   function filterArticlesByDate(startDate, endDate) {
+    startDate.setHours(0, 0, 0, 0);
     // 设置结束日期为当天的最后一毫秒
     endDate = new Date(endDate);
     endDate.setHours(23, 59, 59, 999);

@@ -31,5 +31,9 @@
       "src": "/(.*)",
       "dest": "src/index.js"
     }
-  ]
+  ],
+  "env": {
+    "TZ": "Asia/Shanghai",
+    "VERCEL": "1"
+  }
 }
