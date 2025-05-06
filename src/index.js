@@ -1,0 +1,162 @@
+const express = require('express');
+const path = require('path');
+const http = require('http');
+const socketIO = require('socket.io');
+const { fetchRSS, dataEmitter } = require('./fetcher');
+const { convertToMarkdown } = require('./converter');
+const config = require('./config/default');
+const { formatDate } = require('./utils/dateHelper');
+const cron = require('node-cron');
+
+const app = express();
+const server = http.createServer(app);
+const io = socketIO(server);
+
+const PORT = process.env.PORT || 3000;
+
+// 设置静态文件目录
+app.use(express.static(path.join(__dirname, '../public')));
+
+// 设置模板引擎
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, '../views'));
+
+// 存储最新的数据
+let latestData = {
+    items: [],
+    errors: [],
+    fetchTime: new Date().toLocaleString('zh-CN')
+};
+
+// 定义获取数据的函数
+async function fetchData() {
+    try {
+        console.log('开始获取RSS数据...');
+        const result = await fetchRSS(config.rssLinks);
+        
+        // 按日期排序
+        result.items.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+        
+        // 格式化日期
+        const formattedData = result.items.map(item => ({
+            ...item,
+            formattedDate: formatDate(item.pubDate)
+        }));
+        
+        // 更新最新数据
+        latestData = {
+            items: formattedData,
+            errors: result.errors,
+            fetchTime: new Date().toLocaleString('zh-CN')
+        };
+        
+        // 通知所有连接的客户端数据已更新
+        io.emit('dataUpdated', latestData);
+        
+        console.log('RSS数据获取完成，共获取到', formattedData.length, '条项目');
+    } catch (error) {
+        console.error('获取RSS数据时发生错误:', error);
+        io.emit('fetchError', { message: '获取RSS数据失败: ' + error.message });
+    }
+}
+
+// 主页路由
+app.get('/', async (req, res) => {
+    try {
+        // 如果没有数据，立即获取
+        if (latestData.items.length === 0) {
+            fetchData();
+        }
+        
+        res.render('index', latestData);
+    } catch (error) {
+        console.error('渲染页面失败:', error);
+        res.status(500).render('error', { error: '获取或渲染数据失败' });
+    }
+});
+
+// API端点 - 获取原始数据
+app.get('/api/rss', async (req, res) => {
+    try {
+        res.json(latestData);
+    } catch (error) {
+        res.status(500).json({ error: '获取RSS数据失败' });
+    }
+});
+
+// 手动刷新数据
+app.get('/api/refresh', async (req, res) => {
+    try {
+        // 启动异步数据获取，不等待完成
+        fetchData();
+        res.json({ message: '数据刷新已开始' });
+    } catch (error) {
+        res.status(500).json({ error: '触发数据刷新失败' });
+    }
+});
+
+// 设置WebSocket连接
+io.on('connection', (socket) => {
+    console.log('新客户端连接');
+    
+    // 发送当前数据给新连接的客户端
+    socket.emit('dataUpdated', latestData);
+    
+    // 监听断开连接事件
+    socket.on('disconnect', () => {
+        console.log('客户端断开连接');
+    });
+});
+
+// 监听数据发射器的事件
+dataEmitter.on('newData', (data) => {
+    // 按日期排序
+    data.items.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+    
+    // 格式化日期
+    const formattedItems = data.items.map(item => ({
+        ...item,
+        formattedDate: formatDate(item.pubDate)
+    }));
+    
+    // 更新实时数据
+    latestData.items = formattedItems;
+    latestData.fetchTime = new Date().toLocaleString('zh-CN');
+    
+    // 通知所有连接的客户端有新的源数据
+    io.emit('sourceUpdated', {
+        items: formattedItems,
+        source: data.source,
+        fetchTime: latestData.fetchTime
+    });
+});
+
+dataEmitter.on('error', (error) => {
+    // 添加错误到错误列表
+    latestData.errors.push(error);
+    
+    // 通知所有连接的客户端有错误发生
+    io.emit('sourceError', error);
+});
+
+// 设置定时任务，每10分钟运行一次
+cron.schedule('*/10 * * * *', () => {
+    console.log('执行定时任务: 获取RSS数据');
+    fetchData();
+});
+
+// 启动服务器
+server.listen(PORT, () => {
+    console.log(`服务器已启动，访问 http://localhost:${PORT}`);
+    // 初始获取数据
+    fetchData();
+});
+
+// 处理程序退出
+process.on('SIGINT', () => {
+    console.log('程序正在退出...');
+    server.close(() => {
+        console.log('HTTP服务器已关闭');
+        process.exit(0);
+    });
+});

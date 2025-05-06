@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSS to Markdown</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <!-- 添加日历组件样式 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>RSS to Markdown</h1>
+            <div class="fetch-info">
+                <p>获取时间: <span id="fetchTime"><%= fetchTime %></span></p>
+                <p>共 <span id="itemCount"><%= items.length %></span> 条内容</p>
+                <% if (errors && errors.length > 0) { %>
+                <p class="error-count">有 <span id="errorCount"><%= errors.length %></span> 个RSS源获取失败</p>
+                <% } %>
+            </div>
+            
+            <!-- 添加筛选和排序控件 -->
+            <div class="filter-controls">
+                <div class="date-filter">
+                    <label for="dateRange">日期范围:</label>
+                    <input type="text" id="dateRange" placeholder="选择日期范围" readonly>
+                    <button id="clearDateFilter" class="btn btn-small">清除</button>
+                </div>
+                
+                <div class="sort-controls">
+                    <label for="sortOrder">排序方式:</label>
+                    <select id="sortOrder">
+                        <option value="desc" selected>最新优先</option>
+                        <option value="asc">最早优先</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="actions">
+                <button id="copyAll" class="btn">复制全部</button>
+                <button id="refreshData" class="btn">刷新数据</button>
+                <button id="toggleErrors" class="btn btn-warning">显示错误信息</button>
+            </div>
+        </header>
+        
+        <div id="errorPanel" class="error-panel" style="display: none;">
+            <h3>错误信息</h3>
+            <ul id="errorList">
+                <% if (errors && errors.length > 0) { %>
+                    <% errors.forEach(error => { %>
+                        <li><%= error.message %></li>
+                    <% }); %>
+                <% } %>
+            </ul>
+        </div>
+        
+        <main id="articlesContainer">
+            <% items.forEach((item, index) => { %>
+                <div class="article" data-index="<%= index %>" data-date="<%= new Date(item.pubDate).getTime() %>">
+                    <div class="article-header">
+                        <span class="date"><%= item.formattedDate %></span>
+                        <button class="copy-btn" data-index="<%= index %>">复制</button>
+                    </div>
+                    <div class="article-content">
+                        <h2><%= item.title %></h2>
+                        <div class="content"><%- item.content %></div>
+                        <div class="link">
+                            <a href="<%= item.link %>" target="_blank"><%= item.link %></a>
+                        </div>
+                    </div>
+                    <div class="markdown-preview" id="preview-<%= index %>">
+                        <pre>## <%= item.title %>
+<%- item.content.replace(/<\/?[^>]+(>|$)/g, "") %>
+> 原文链接：<%= item.link %></pre>
+                    </div>
+                </div>
+            <% }); %>
+        </main>
+        
+        <div id="notification" class="notification">
+            正在更新数据...
+        </div>
+    </div>
+    
+    <!-- 添加日历组件脚本 -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>
