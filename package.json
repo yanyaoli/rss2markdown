@@ -3,10 +3,14 @@
   "version": "1.0.0",
   "description": "A project to convert RSS feeds to Markdown format.",
   "main": "src/index.js",
+  "engines": {
+    "node": ">=14.x"
+  },
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "serve": "node server.js",
+    "build": "mkdir -p public && cp -r views public/",
     "test": "echo \"No tests specified\" && exit 0"
   },
   "dependencies": {
@@ -15,12 +19,12 @@
     "ejs": "^3.1.10",
     "express": "^4.21.2",
     "node-cron": "^3.0.2",
-    "pm2": "^5.3.0",
     "socket.io": "^4.7.2",
     "xml2js": "^0.4.23"
   },
   "devDependencies": {
-    "nodemon": "^2.0.7"
+    "nodemon": "^2.0.7",
+    "pm2": "^5.3.0"
   },
   "keywords": [
     "RSS",
