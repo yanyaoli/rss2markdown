@@ -5,12 +5,46 @@ const socketIO = require('socket.io');
 const { fetchRSS, dataEmitter } = require('./fetcher');
 const config = require('./config/default');
 const { formatDate } = require('./utils/dateHelper');
+const fs = require('fs');
 
 // 创建 Express 应用
 const app = express();
 
+// 启用JSON解析中间件
+app.use(express.json());
+
 // 检测环境类型
 const isVercel = process.env.VERCEL === '1';
+
+// 创建用户自定义RSS链接的存储
+let customRssLinks = [];
+// 尝试从本地存储读取自定义RSS链接
+try {
+  if (fs.existsSync('./custom-rss.json')) {
+    const data = fs.readFileSync('./custom-rss.json', 'utf8');
+    customRssLinks = JSON.parse(data);
+    console.log('已加载自定义RSS链接:', customRssLinks);
+  }
+} catch (error) {
+  console.error('读取自定义RSS链接失败:', error);
+}
+
+// 保存自定义RSS链接到本地存储
+function saveCustomRssLinks() {
+  if (!isVercel) { // 在Vercel环境中不保存到本地文件
+    try {
+      fs.writeFileSync('./custom-rss.json', JSON.stringify(customRssLinks), 'utf8');
+      console.log('自定义RSS链接已保存');
+    } catch (error) {
+      console.error('保存自定义RSS链接失败:', error);
+    }
+  }
+}
+
+// 获取当前使用的RSS链接
+function getCurrentRssLinks() {
+  return customRssLinks.length > 0 ? customRssLinks : config.rssLinks;
+}
 
 // 创建 HTTP 服务器和 Socket.IO 实例 
 let server, io;
@@ -46,13 +80,14 @@ if (!isVercel) {
     // 更新实时数据
     latestData.items = formattedItems;
     latestData.fetchTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
-;
+    latestData.rssLinks = getCurrentRssLinks();
 
     // 通知所有连接的客户端有新的源数据
     io.emit('sourceUpdated', {
       items: formattedItems,
       source: data.source,
-      fetchTime: latestData.fetchTime
+      fetchTime: latestData.fetchTime,
+      rssLinks: getCurrentRssLinks()
     });
   });
   
@@ -78,14 +113,15 @@ app.set('views', path.join(__dirname, '../views'));
 let latestData = {
   items: [],
   errors: [],
-  fetchTime: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
+  fetchTime: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+  rssLinks: getCurrentRssLinks()
 };
 
 // 定义获取数据的函数
 async function fetchData() {
   try {
     console.log('开始获取RSS数据...');
-    const result = await fetchRSS(config.rssLinks);
+    const result = await fetchRSS(getCurrentRssLinks()); // 使用当前RSS链接
     
     // 按日期排序
     result.items.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
@@ -101,7 +137,8 @@ async function fetchData() {
       items: formattedData,
       errors: result.errors,
       fetchTime: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
-      timeZone: 'Asia/Shanghai'
+      timeZone: 'Asia/Shanghai',
+      rssLinks: getCurrentRssLinks()
     };
     
     // 如果不是 Vercel 环境，通知所有连接的客户端数据已更新
@@ -163,6 +200,41 @@ app.get('/api/refresh', async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: '触发数据刷新失败' });
   }
+});
+
+// 更新RSS链接列表
+app.post('/api/update-rss', (req, res) => {
+  try {
+    const { rssLinks } = req.body;
+    
+    if (!Array.isArray(rssLinks) || rssLinks.length === 0) {
+      return res.status(400).json({ error: '请提供有效的RSS链接列表' });
+    }
+    
+    // 更新自定义RSS链接
+    customRssLinks = rssLinks;
+    
+    // 保存到本地存储
+    saveCustomRssLinks();
+    
+    // 返回成功消息
+    res.json({ 
+      message: 'RSS链接已更新',
+      rssLinks: customRssLinks
+    });
+  } catch (error) {
+    console.error('更新RSS链接失败:', error);
+    res.status(500).json({ error: '更新RSS链接失败: ' + error.message });
+  }
+});
+
+// 获取当前RSS链接列表
+app.get('/api/rss-links', (req, res) => {
+  // 修改此处，返回当前链接和默认链接
+  res.json({ 
+    rssLinks: getCurrentRssLinks(),
+    defaultRssLinks: config.rssLinks
+  });
 });
 
 // 修改 Socket.IO 客户端脚本
