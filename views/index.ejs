@@ -73,7 +73,6 @@ https://another-site.com/feed"><% if (rssLinks && rssLinks.length > 0) { %><%= r
                 <% } %>
             </ul>
         </div>
-        
         <main id="articlesContainer">
             <% items.forEach((item, index) => { %>
                 <div class="article" data-index="<%= index %>" data-date="<%= new Date(item.pubDate).getTime() %>">
@@ -83,15 +82,22 @@ https://another-site.com/feed"><% if (rssLinks && rssLinks.length > 0) { %><%= r
                     </div>
                     <div class="article-content">
                         <h2><%= item.title %></h2>
-                        <div class="content"><%- item.content %></div>
+                        <div class="content">
+                            <%- item.content %>
+                            <div class="content-overlay"></div>
+                        </div>
+                        <button class="expand-btn">
+                            <span class="expand-text"><i class="bi bi-chevron-down"></i> 展开全文</span>
+                            <span class="collapse-text"><i class="bi bi-chevron-up"></i> 收起内容</span>
+                        </button>
                         <div class="link">
-                            <a href="<%= item.link %>" target="_blank"><i class="bi bi-box-arrow-up-right"></i>> 原文链接： <%= item.link %></a>
+                            <a href="<%= item.link %>" target="_blank"><i class="bi bi-box-arrow-up-right"></i> <%= item.link %></a>
                         </div>
                     </div>
                     <div class="markdown-preview" id="preview-<%= index %>">
                         <pre>## <%= item.title %>
-<%- item.content.replace(/<\/?[^>]+(>|$)/g, "") %>
-> 原文链接：<%= item.link %></pre>
+        <%- item.content.replace(/<\/?[^>]+(>|$)/g, "") %>
+        > 原文链接：<%= item.link %></pre>
                     </div>
                 </div>
             <% }); %>
