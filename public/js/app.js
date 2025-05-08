@@ -80,8 +80,108 @@ document.addEventListener('DOMContentLoaded', function () {
       if (errorCountElement) errorCountElement.style.display = 'none';
     }
 
-    renderArticles(data.items);
-    showNotification('数据已更新', false, 'bi-check-circle');
+    // 获取当前文章容器
+    const articlesContainer = document.getElementById('articlesContainer');
+    if (articlesContainer) {
+      // 记录当前文章数量
+      const currentArticleCount = articlesContainer.children.length;
+
+      // 渲染新的文章
+      data.items.slice(currentArticleCount).forEach((item, index) => {
+        const articleDiv = document.createElement('div');
+        articleDiv.className = 'article';
+        articleDiv.dataset.index = currentArticleCount + index;
+        articleDiv.dataset.date = new Date(item.pubDate).getTime();
+
+        // 创建文章头部
+        const articleHeader = document.createElement('div');
+        articleHeader.className = 'article-header';
+        articleHeader.innerHTML = `
+          <span class="date"><i class="bi bi-calendar-event"></i> ${item.formattedDate}</span>
+          <button class="copy-btn" data-index="${currentArticleCount + index}"><i class="bi bi-clipboard"></i> 复制</button>
+        `;
+
+        // 创建文章内容区
+        const articleContent = document.createElement('div');
+        articleContent.className = 'article-content';
+
+        // 添加标题
+        const title = document.createElement('h2');
+        title.textContent = item.title;
+
+        // 添加可折叠内容
+        const content = document.createElement('div');
+        content.className = 'content';
+        content.innerHTML = item.content;
+
+        // 添加渐变遮罩
+        const overlay = document.createElement('div');
+        overlay.className = 'content-overlay';
+        content.appendChild(overlay);
+
+        // 创建展开/折叠按钮
+        const expandBtn = document.createElement('button');
+        expandBtn.className = 'expand-btn';
+        expandBtn.innerHTML = `
+          <span class="expand-text"><i class="bi bi-chevron-down"></i> 展开全文</span>
+          <span class="collapse-text"><i class="bi bi-chevron-up"></i> 收起内容</span>
+        `;
+
+        // 添加链接部分
+        const linkDiv = document.createElement('div');
+        linkDiv.className = 'link';
+        linkDiv.innerHTML = `
+          <a href="${item.link}" target="_blank"><i class="bi bi-box-arrow-up-right"></i> ${item.link}</a>
+        `;
+
+        // 添加Markdown预览
+        const markdownPreview = document.createElement('div');
+        markdownPreview.className = 'markdown-preview';
+        markdownPreview.id = `preview-${currentArticleCount + index}`;
+        markdownPreview.innerHTML = `
+          <pre>## ${item.title}
+  ${item.content.replace(/<\/?[^>]+(>|$)/g, "")}
+  > 原文链接：[${item.link}](${item.link})</pre>
+        `;
+
+        // 组装文章内容部分
+        articleContent.appendChild(title);
+        articleContent.appendChild(content);
+        articleContent.appendChild(expandBtn);
+        articleContent.appendChild(linkDiv);
+
+        // 组装整个文章
+        articleDiv.appendChild(articleHeader);
+        articleDiv.appendChild(articleContent);
+        articleDiv.appendChild(markdownPreview);
+
+        // 添加到容器
+        articlesContainer.appendChild(articleDiv);
+
+        // 检查内容是否需要折叠
+        setTimeout(() => {
+          // 使用setTimeout确保DOM已完全渲染
+          if (content.scrollHeight <= 200) {
+            // 内容不够长，隐藏展开按钮和遮罩
+            expandBtn.style.display = 'none';
+            overlay.style.display = 'none';
+          }
+        }, 0);
+      });
+
+      // 绑定展开/折叠按钮事件
+      attachExpandButtonEvents();
+
+      // 应用当前排序方式
+      if (elements.sortOrderSelect) {
+        sortArticles(elements.sortOrderSelect.value);
+      }
+
+      // 重新绑定复制按钮事件
+      attachCopyButtonEvents();
+    }
+
+    // 去掉数据已更新的提示
   }
 
   // 安全地更新元素
