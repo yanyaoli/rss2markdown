@@ -199,9 +199,6 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // 添加文章到容器
-  // 将 renderArticles 函数修改为
-
-  // 添加文章到容器
   function renderArticles(items) {
     if (!elements.articlesContainer) return;
 
@@ -261,7 +258,7 @@ document.addEventListener('DOMContentLoaded', function () {
       markdownPreview.innerHTML = `
         <pre>## ${item.title}
   ${item.content.replace(/<\/?[^>]+(>|$)/g, "")}
-  > 原文链接：${item.link}</pre>
+  > 原文链接：[${item.link}](${item.link})</pre>
       `;
 
       // 组装文章内容部分
@@ -364,11 +361,13 @@ document.addEventListener('DOMContentLoaded', function () {
     copyButtons.forEach(button => {
       button.addEventListener('click', function () {
         const index = this.getAttribute('data-index');
-        const previewElement = document.getElementById(`preview-${index}`);
-        if (previewElement) {
-          const textToCopy = previewElement.querySelector('pre').textContent;
-          copyToClipboard(textToCopy, this);
-        }
+        const article = document.querySelector(`.article[data-index="${index}"]`);
+        const title = article.querySelector('h2').textContent;
+        const content = article.querySelector('.content').textContent.trim();
+        const link = article.querySelector('.link a').href;
+
+        const textToCopy = `## ${title}\n${content}\n> 原文链接：[${link}](${link})\n\n`;
+        copyToClipboard(textToCopy, this);
       });
     });
   }
@@ -379,11 +378,15 @@ document.addEventListener('DOMContentLoaded', function () {
   // 复制全部功能
   if (elements.copyAllButton) {
     elements.copyAllButton.addEventListener('click', function () {
-      const allPreviews = document.querySelectorAll('.article:not(.hidden) .markdown-preview pre');
+      const articles = document.querySelectorAll('.article:not(.hidden)');
       let allText = '';
 
-      allPreviews.forEach(preview => {
-        allText += preview.textContent + '\n\n';
+      articles.forEach(article => {
+        const title = article.querySelector('h2').textContent;
+        const content = article.querySelector('.content').textContent.trim();
+        const link = article.querySelector('.link a').href;
+
+        allText += `## ${title}\n${content}\n> 原文链接：[${link}](${link})\n\n`;
       });
 
       copyToClipboard(allText, this);
