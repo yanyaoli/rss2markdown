@@ -473,7 +473,8 @@ main {
 
 .expand-btn {
   position: relative;
-  display: inline-flex;
+  display: flex;
+  justify-content: center;
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
